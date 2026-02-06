@@ -854,3 +854,179 @@ body {
     background: var(--card-bg);
     box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
 }
+
+.btn-danger-text {
+    background: none;
+    color: var(--system-red);
+    font-weight: 700;
+}
+
+.btn-danger-text:hover {
+    background: rgba(255, 59, 48, 0.08);
+}
+
+/* --- Mobile Menu --- */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 10001;
+    background: var(--card-bg);
+    border: none;
+    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: var(--shadow-soft);
+    color: var(--text-primary);
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+}
+
+.sidebar-backdrop.visible {
+    display: block;
+}
+
+/* --- Focus Visible --- */
+*:focus-visible {
+    outline: 3px solid var(--system-blue);
+    outline-offset: 2px;
+}
+
+/* --- Responsive: Tablet --- */
+@media (max-width: 1024px) {
+    .main-content {
+        padding: 40px 32px;
+    }
+
+    .achievement-container {
+        width: 160px;
+    }
+}
+
+/* --- Responsive: Mobile --- */
+@media (max-width: 768px) {
+    body {
+        overflow: auto;
+    }
+
+    #app {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -300px;
+        height: 100vh;
+        z-index: 1000;
+        transition: left 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+        overflow-y: auto;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .main-content {
+        padding: 70px 16px 32px;
+        gap: 20px;
+    }
+
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .header-right {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .achievement-container {
+        width: 100%;
+        margin-right: 0;
+    }
+
+    #current-date-display {
+        font-size: 24px;
+    }
+
+    .calendar-strip {
+        gap: 8px;
+    }
+
+    .cal-day {
+        flex: 0 0 56px;
+        height: 74px;
+    }
+
+    .cal-date {
+        font-size: 17px;
+    }
+
+    .task-item {
+        padding: 14px 16px;
+        border-radius: 16px;
+    }
+
+    .modal {
+        width: 95vw;
+        padding: 24px;
+        border-radius: 24px;
+    }
+
+    .timer-ring-container {
+        width: 180px;
+        height: 180px;
+    }
+
+    .timer-text {
+        font-size: 40px;
+    }
+
+    .focus-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .modal-footer {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .buddy-stage {
+        height: 100px;
+        margin-bottom: 16px;
+    }
+
+    .chi-buddy {
+        transform: scale(0.8);
+    }
+
+    #focus-task-title {
+        font-size: 22px;
+    }
+}
