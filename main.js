@@ -26,6 +26,8 @@
     };
 
     const POMODORO_CYCLE = 1500;
+    const TIMER_CIRCUMFERENCE = 289;
+    const MIN_SESSION_SECONDS = 30;
 
     function getFmtDate(date) {
         if (!(date instanceof Date)) date = new Date();
@@ -33,6 +35,17 @@
         const m = String(date.getMonth() + 1).padStart(2, '0');
         const d = String(date.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function parseLocalDate(dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        return new Date(y, m - 1, d);
     }
 
     function formatTime(sec) {
@@ -62,7 +75,7 @@
         if (raw) {
             try {
                 const data = JSON.parse(raw);
-                appState.tasks = data.tasks || [];
+                appState.tasks = Array.isArray(data.tasks) ? data.tasks : [];
                 appState.sessionStats = data.sessionStats || { date: getFmtDate(new Date()), count: 0 };
 
                 const today = getFmtDate(new Date());
@@ -70,9 +83,12 @@
                     appState.sessionStats.date = today;
                     appState.sessionStats.count = 0;
                 }
-            } catch (e) { appState.tasks = []; }
+            } catch (e) {
+                console.warn('데이터 로드 실패, 초기화합니다:', e.message);
+                appState.tasks = [];
+                appState.sessionStats = { date: getFmtDate(new Date()), count: 0 };
+            }
         } else {
-            // v14 Fresh Start: No migration from older versions
             appState.tasks = [];
             appState.sessionStats = { date: getFmtDate(new Date()), count: 0 };
         }
@@ -89,7 +105,7 @@
         const strip = el('calendar-strip');
         if (!strip) return;
         strip.innerHTML = '';
-        const base = new Date(appState.selectedDate);
+        const base = parseLocalDate(appState.selectedDate);
         if (isNaN(base.getTime())) {
             appState.selectedDate = getFmtDate(new Date());
             return renderCalendar();
@@ -133,51 +149,82 @@
         filtered.forEach(t => {
             const li = document.createElement('li');
             li.className = `task-item ${t.completed ? 'is-completed' : ''}`;
-            li.innerHTML = `
-                <div class="task-checkbox ${t.completed ? 'checked' : ''}"></div>
-                <div class="task-content">
-                    <p class="task-title">${t.title}</p>
-                    <p class="task-meta">⚡ ${formatFullTime(t.focusedTime)} • 🍅 ${t.tomatoes || 0}</p>
-                </div>
-            `;
-            li.querySelector('.task-checkbox').onclick = (e) => {
+            li.setAttribute('role', 'listitem');
+            li.setAttribute('tabindex', '0');
+
+            const checkbox = document.createElement('div');
+            checkbox.className = `task-checkbox ${t.completed ? 'checked' : ''}`;
+            checkbox.setAttribute('role', 'checkbox');
+            checkbox.setAttribute('aria-checked', String(t.completed));
+            checkbox.onclick = (e) => {
                 e.stopPropagation();
                 t.completed = !t.completed;
                 save(); render();
             };
+
+            const content = document.createElement('div');
+            content.className = 'task-content';
+            const title = document.createElement('p');
+            title.className = 'task-title';
+            title.textContent = t.title;
+            const meta = document.createElement('p');
+            meta.className = 'task-meta';
+            meta.textContent = `⚡ ${formatFullTime(t.focusedTime)} • 🍅 ${t.tomatoes || 0}`;
+            content.appendChild(title);
+            content.appendChild(meta);
+
+            li.appendChild(checkbox);
+            li.appendChild(content);
             li.onclick = () => openModal(t.id);
+            li.onkeydown = (e) => { if (e.key === 'Enter') openModal(t.id); };
             list.appendChild(li);
         });
     }
 
     function renderStats() {
+        const tomatoesEl = el('total-tomatoes');
+        const dayEl = el('stats-day');
+        const weekEl = el('stats-week');
+        const monthEl = el('stats-month');
+        if (!tomatoesEl || !dayEl || !weekEl || !monthEl) return;
+
         const now = new Date();
         const todayStr = getFmtDate(now);
-        const dayTime = appState.tasks.filter(t => t.date === todayStr).reduce((s, t) => s + (t.focusedTime || 0), 0);
-        const dayToms = appState.tasks.filter(t => t.date === todayStr).reduce((s, t) => s + (t.tomatoes || 0), 0);
-        const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
-        const weekTime = appState.tasks.filter(t => t.date >= getFmtDate(weekAgo)).reduce((s, t) => s + (t.focusedTime || 0), 0);
+        const todayTasks = appState.tasks.filter(t => t.date === todayStr);
+        const dayTime = todayTasks.reduce((s, t) => s + (t.focusedTime || 0), 0);
+        const dayToms = todayTasks.reduce((s, t) => s + (t.tomatoes || 0), 0);
+
+        const weekAgo = new Date();
+        weekAgo.setDate(now.getDate() - 7);
+        const weekStr = getFmtDate(weekAgo);
+        const weekTime = appState.tasks.filter(t => t.date >= weekStr).reduce((s, t) => s + (t.focusedTime || 0), 0);
+
         const mStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
         const monthTime = appState.tasks.filter(t => t.date >= mStart).reduce((s, t) => s + (t.focusedTime || 0), 0);
 
-        if (el('total-tomatoes')) el('total-tomatoes').textContent = `🍅 x ${dayToms}`;
-        if (el('stats-day')) el('stats-day').textContent = formatFullTime(dayTime);
-        if (el('stats-week')) el('stats-week').textContent = formatFullTime(weekTime);
-        if (el('stats-month')) el('stats-month').textContent = formatFullTime(monthTime);
+        tomatoesEl.textContent = `🍅 x ${dayToms}`;
+        dayEl.textContent = formatFullTime(dayTime);
+        weekEl.textContent = formatFullTime(weekTime);
+        monthEl.textContent = formatFullTime(monthTime);
     }
 
     function updateAchievements() {
         const daily = appState.tasks.filter(t => t.date === appState.selectedDate);
-        if (!el('achievement-bar') || !el('achievement-percent')) return;
+        const bar = el('achievement-bar');
+        const percent = el('achievement-percent');
+        const progressBg = bar ? bar.parentElement : null;
+        if (!bar || !percent) return;
 
         if (daily.length === 0) {
-            el('achievement-bar').style.width = '0%';
-            el('achievement-percent').textContent = '0%';
+            bar.style.width = '0%';
+            percent.textContent = '0%';
+            if (progressBg) progressBg.setAttribute('aria-valuenow', '0');
             return;
         }
         const p = Math.round((daily.filter(t => t.completed).length / daily.length) * 100);
-        el('achievement-bar').style.width = `${p}%`;
-        el('achievement-percent').textContent = `${p}%`;
+        bar.style.width = `${p}%`;
+        percent.textContent = `${p}%`;
+        if (progressBg) progressBg.setAttribute('aria-valuenow', String(p));
     }
 
     function showToast(msg, icon = "🎉") {
@@ -189,7 +236,13 @@
         }
         const toast = document.createElement('div');
         toast.className = 'toast';
-        toast.innerHTML = `<span style="font-size:18px; margin-right:8px;">${icon}</span> ${msg}`;
+        const iconSpan = document.createElement('span');
+        iconSpan.style.cssText = 'font-size:18px; margin-right:8px;';
+        iconSpan.textContent = icon;
+        const msgSpan = document.createElement('span');
+        msgSpan.textContent = msg;
+        toast.appendChild(iconSpan);
+        toast.appendChild(msgSpan);
         container.appendChild(toast);
         setTimeout(() => toast.classList.add('visible'), 10);
         setTimeout(() => {
@@ -232,8 +285,6 @@
             appState.sessionStats.date = todayStr;
             appState.sessionStats.count = 0;
         }
-        appState.sessionStats.count++;
-        save();
 
         appState.focus.active = true;
         appState.focus.paused = false;
@@ -242,8 +293,10 @@
         appState.focus.cycleElapsed = 0;
         appState.focus.sessionTomatoes = 0;
 
-        el('focus-session-count').textContent = `오늘 ${appState.sessionStats.count}번째 집중`;
-        el('focus-task-title').textContent = task.title;
+        const sessionCountEl = el('focus-session-count');
+        const taskTitleEl = el('focus-task-title');
+        if (sessionCountEl) sessionCountEl.textContent = `오늘 ${appState.sessionStats.count + 1}번째 집중`;
+        if (taskTitleEl) taskTitleEl.textContent = task.title;
         el('pause-focus-btn').textContent = '일시 정지';
         el('focus-overlay').classList.remove('hidden');
         el('focus-overlay').classList.remove('is-paused');
@@ -277,10 +330,16 @@
     function updateFocusUI() {
         const task = appState.tasks.find(t => t.id === appState.focus.taskId);
         if (!task) return;
+        const timerEl = el('focus-timer');
+        const progressEl = el('timer-progress');
+        const tomatoesEl = el('session-tomatoes');
+        if (!timerEl || !progressEl || !tomatoesEl) return;
+
         const left = POMODORO_CYCLE - appState.focus.cycleElapsed;
-        el('focus-timer').textContent = formatTime(left);
-        el('timer-progress').style.strokeDashoffset = 289 - ((left / POMODORO_CYCLE) * 289);
-        el('session-tomatoes').textContent = '🍅'.repeat(task.tomatoes || 0);
+        const progress = appState.focus.cycleElapsed / POMODORO_CYCLE;
+        timerEl.textContent = formatTime(left);
+        progressEl.style.strokeDashoffset = TIMER_CIRCUMFERENCE * (1 - progress);
+        tomatoesEl.textContent = '🍅'.repeat(task.tomatoes || 0);
     }
 
     function stopFocus() {
@@ -293,19 +352,26 @@
             const minutes = Math.floor(appState.focus.totalElapsed / 60);
             const toms = appState.focus.sessionTomatoes;
 
+            if (appState.focus.totalElapsed >= MIN_SESSION_SECONDS) {
+                appState.sessionStats.count++;
+            }
+
             let message = "";
             if (toms > 0) {
-                message = `토마토 ${toms}개, ${minutes}분을 기록했어요! 정말 대단해요! 🏆`;
-            } else {
+                message = `토마토 ${toms}개, ${minutes}분을 기록했어요! 정말 대단해요!`;
+            } else if (appState.focus.totalElapsed >= MIN_SESSION_SECONDS) {
                 const timeStr = appState.focus.totalElapsed < 60 ? `${appState.focus.totalElapsed}초` : `${minutes}분`;
-                message = `${timeStr}을 기록 완료! 수고하셨어요! ✨`;
+                message = `${timeStr}을 기록 완료! 수고하셨어요!`;
+            } else {
+                message = '다음에는 조금 더 집중해봐요!';
             }
-            showToast(message, "👏");
+            showToast(message, toms > 0 ? "🏆" : "👏");
         }
 
         appState.focus.active = false;
         appState.focus.paused = false;
-        el('focus-overlay').classList.add('hidden');
+        const focusOverlay = el('focus-overlay');
+        if (focusOverlay) focusOverlay.classList.add('hidden');
         save(); render();
     }
 
@@ -315,11 +381,11 @@
             load();
 
             el('prev-date').onclick = () => {
-                const d = new Date(appState.selectedDate); d.setDate(d.getDate() - 1);
+                const d = parseLocalDate(appState.selectedDate); d.setDate(d.getDate() - 1);
                 appState.selectedDate = getFmtDate(d); render();
             };
             el('next-date').onclick = () => {
-                const d = new Date(appState.selectedDate); d.setDate(d.getDate() + 1);
+                const d = parseLocalDate(appState.selectedDate); d.setDate(d.getDate() + 1);
                 appState.selectedDate = getFmtDate(d); render();
             };
 
@@ -357,14 +423,21 @@
                 if (!list) return;
                 list.innerHTML = '';
                 if (active.length === 0) {
-                    list.innerHTML = `<p style="padding:40px; text-align:center; opacity:0.5;">집중할 수 있는 미완료 작업이 없습니다.</p>`;
+                    const emptyMsg = document.createElement('p');
+                    emptyMsg.style.cssText = 'padding:40px; text-align:center; opacity:0.5;';
+                    emptyMsg.textContent = '집중할 수 있는 미완료 작업이 없습니다.';
+                    list.appendChild(emptyMsg);
                 } else {
                     active.forEach(t => {
                         const div = document.createElement('div');
                         div.className = 'select-item';
+                        div.setAttribute('role', 'button');
+                        div.setAttribute('tabindex', '0');
                         div.style.cssText = "padding:16px; margin-bottom:12px; background:var(--input-bg); border-radius:14px; cursor:pointer; font-weight:700;";
                         div.textContent = t.title;
-                        div.onclick = () => { el('focus-select-overlay').classList.add('hidden'); startFocus(t.id); };
+                        const selectHandler = () => { el('focus-select-overlay').classList.add('hidden'); startFocus(t.id); };
+                        div.onclick = selectHandler;
+                        div.onkeydown = (e) => { if (e.key === 'Enter') selectHandler(); };
                         list.appendChild(div);
                     });
                 }
@@ -377,11 +450,49 @@
             el('close-focus-select').onclick = closeModals;
 
             el('nav-all').onclick = () => {
-                appState.currentFilter = 'all'; el('nav-all').classList.add('active'); el('nav-completed').classList.remove('active'); render();
+                appState.currentFilter = 'all';
+                el('nav-all').classList.add('active');
+                el('nav-all').setAttribute('aria-pressed', 'true');
+                el('nav-completed').classList.remove('active');
+                el('nav-completed').setAttribute('aria-pressed', 'false');
+                render();
             };
             el('nav-completed').onclick = () => {
-                appState.currentFilter = 'completed'; el('nav-all').classList.remove('active'); el('nav-completed').classList.add('active'); render();
+                appState.currentFilter = 'completed';
+                el('nav-all').classList.remove('active');
+                el('nav-all').setAttribute('aria-pressed', 'false');
+                el('nav-completed').classList.add('active');
+                el('nav-completed').setAttribute('aria-pressed', 'true');
+                render();
             };
+
+            const mobileMenuBtn = el('mobile-menu-btn');
+            const sidebarBackdrop = el('sidebar-backdrop');
+            const sidebar = document.querySelector('.sidebar');
+            if (mobileMenuBtn && sidebar) {
+                const toggleSidebar = () => {
+                    sidebar.classList.toggle('open');
+                    if (sidebarBackdrop) sidebarBackdrop.classList.toggle('visible');
+                };
+                mobileMenuBtn.onclick = toggleSidebar;
+                if (sidebarBackdrop) sidebarBackdrop.onclick = toggleSidebar;
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (appState.focus.active) {
+                        stopFocus();
+                    } else {
+                        closeModals();
+                    }
+                }
+                if (e.key === 'Enter' && !el('modal-overlay').classList.contains('hidden')) {
+                    const activeEl = document.activeElement;
+                    if (activeEl && activeEl.id === 'new-task-input') {
+                        submitTask(false);
+                    }
+                }
+            });
 
             render();
             console.log('Focus Do v14.0 Live');
