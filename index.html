@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Do - 프리미엄 집중 투두</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="main.js"></script>
+</head>
+
+<body>
+    <!-- JS Error Shield -->
+    <div id="js-error-shield"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;background:white;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:-apple-system,sans-serif;text-align:center;padding:20px;">
+        <h2 style="margin-bottom:10px;">Focus Do를 불러오는 중...</h2>
+        <p style="color:#666;font-size:14px;">준비가 완료되면 자동으로 사라집니다.</p>
+        <div id="debug-log" style="margin-top:20px;font-family:monospace;font-size:12px;color:red;"></div>
+    </div>
+
+    <!-- Feedback Toasts -->
+    <div id="toast-container"></div>
+
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Focus Do</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" id="nav-all">오늘의 계획</button>
+                <button class="nav-item" id="nav-completed">완료된 항목</button>
+            </nav>
+
+            <div class="sidebar-divider"></div>
+
+            <button id="global-start-focus" class="btn btn-focus-main">집중 시작하기</button>
+
+            <div class="stats-panel">
+                <div class="stats-card">
+                    <p class="stats-label">오늘 수확량</p>
+                    <div class="tomato-count" id="total-tomatoes">🍅 x 0</div>
+                </div>
+
+                <div class="stats-card">
+                    <p class="stats-label">누적 집중 시간</p>
+                    <div class="stats-grid">
+                        <div class="stats-item">
+                            <span>오늘</span>
+                            <strong id="stats-day">0m</strong>
+                        </div>
+                        <div class="stats-item">
+                            <span>이번 주</span>
+                            <strong id="stats-week">0m</strong>
+                        </div>
+                        <div class="stats-item">
+                            <span>이번 달</span>
+                            <strong id="stats-month">0m</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <div class="header-left">
+                    <div class="date-navigator">
+                        <button id="prev-date" class="btn-nav">＜</button>
+                        <h2 id="current-date-display">오늘</h2>
+                        <button id="next-date" class="btn-nav">＞</button>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="achievement-container">
+                        <div class="progress-info">
+                            <span>오늘의 달성도</span>
+                            <span id="achievement-percent">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="achievement-bar"></div>
+                        </div>
+                    </div>
+                    <button id="add-task-btn" class="btn btn-primary">+ 새 작업</button>
+                </div>
+            </header>
+
+            <div class="calendar-wrapper">
+                <div class="calendar-strip" id="calendar-strip"></div>
+            </div>
+
+            <div class="task-list-container">
+                <ul id="task-list" class="task-list"></ul>
+            </div>
+        </main>
+
+        <!-- Overlays -->
+        <div id="focus-overlay" class="overlay hidden">
+            <div class="modal pomodoro-card">
+                <button id="close-focus" class="btn-close-overlay">&times;</button>
+
+                <div class="buddy-stage">
+                    <div class="chi-buddy">
+                        <div class="chi-head">
+                            <div class="chi-ear-l"></div>
+                            <div class="chi-ear-r"></div>
+                            <div class="chi-face">
+                                <div class="chi-eye-l"></div>
+                                <div class="chi-eye-r"></div>
+                                <div class="chi-nose"></div>
+                                <div class="chi-mouth"></div>
+                                <div class="chi-blush-l"></div>
+                                <div class="chi-blush-r"></div>
+                            </div>
+                        </div>
+                        <div class="chi-body">
+                            <div class="chi-hand-l"></div>
+                            <div class="chi-hand-r"></div>
+                            <div class="chi-tool"></div>
+                        </div>
+                    </div>
+                    <div class="chi-table"></div>
+                </div>
+
+                <div class="focus-header">
+                    <div id="session-tomatoes" class="session-tomatoes"></div>
+                    <div id="focus-session-count" class="focus-count-label">오늘 n번째 집중</div>
+                    <h2 id="focus-task-title">작업 이름</h2>
+                </div>
+
+                <div class="timer-section">
+                    <div class="timer-ring-container">
+                        <svg class="timer-svg" viewBox="0 0 100 100">
+                            <circle class="timer-bg" cx="50" cy="50" r="46"></circle>
+                            <circle id="timer-progress" class="timer-bar" cx="50" cy="50" r="46"></circle>
+                        </svg>
+                        <div class="timer-text" id="focus-timer">25:00</div>
+                    </div>
+                </div>
+
+                <div class="focus-actions">
+                    <button id="pause-focus-btn" class="btn btn-secondary">일시 정지</button>
+                    <button id="stop-focus-btn" class="btn btn-danger-soft">집중 종료하기</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="focus-select-overlay" class="overlay hidden">
+            <div class="modal select-modal">
+                <button id="close-focus-select" class="btn-close-overlay">&times;</button>
+                <h3>집중할 작업 선택</h3>
+                <div id="focus-select-list" class="select-list"></div>
+            </div>
+        </div>
+
+        <div id="modal-overlay" class="overlay hidden">
+            <div class="modal task-modal">
+                <h3 id="modal-title">새 작업</h3>
+                <div class="modal-form">
+                    <div class="form-group">
+                        <label>작업 제목</label>
+                        <input type="text" id="new-task-input" placeholder="무엇을 해낼까요?" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>날짜</label>
+                        <input type="date" id="task-date-input">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="modal-delete" class="btn btn-danger-text hidden">삭제</button>
+                    <div class="spacer"></div>
+                    <button id="modal-cancel" class="btn btn-secondary">취소</button>
+                    <button id="modal-submit" class="btn btn-secondary">확인</button>
+                    <button id="modal-submit-focus" class="btn btn-primary">확인 후 바로 시작</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
