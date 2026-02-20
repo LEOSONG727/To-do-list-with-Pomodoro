@@ -56,23 +56,28 @@
 body {
     background: var(--system-bg);
     color: var(--text-primary);
-    overflow: hidden;
+    overflow: auto;
 }
 
 #app {
     display: flex;
-    height: 100vh;
+    min-height: 100vh;
 }
 
 /* --- Sidebar --- */
 .sidebar {
     width: 280px;
+    flex-shrink: 0;
     background: var(--system-sidebar);
     padding: 40px 20px;
     display: flex;
     flex-direction: column;
     gap: 24px;
     border-right: 1px solid rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -916,7 +921,7 @@ body {
 }
 
 /* --- Responsive: Mobile --- */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     body {
         overflow: auto;
     }
