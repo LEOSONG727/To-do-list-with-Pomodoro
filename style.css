@@ -56,23 +56,28 @@
 body {
     background: var(--system-bg);
     color: var(--text-primary);
-    overflow: hidden;
+    overflow: auto;
 }
 
 #app {
     display: flex;
-    height: 100vh;
+    min-height: 100vh;
 }
 
 /* --- Sidebar --- */
 .sidebar {
     width: 280px;
+    flex-shrink: 0;
     background: var(--system-sidebar);
     padding: 40px 20px;
     display: flex;
     flex-direction: column;
     gap: 24px;
     border-right: 1px solid rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -186,6 +191,7 @@ body {
 /* --- Main Content --- */
 .main-content {
     flex: 1;
+    min-width: 0;
     padding: 50px 70px;
     overflow-y: auto;
     display: flex;
@@ -197,6 +203,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .date-navigator {
@@ -265,15 +273,19 @@ body {
 }
 
 /* --- Calendar --- */
-.calendar-strip {
-    display: flex;
-    gap: 12px;
-    padding-bottom: 10px;
+.calendar-wrapper {
     overflow-x: auto;
 }
 
-.calendar-strip::-webkit-scrollbar {
+.calendar-wrapper::-webkit-scrollbar {
     display: none;
+}
+
+.calendar-strip {
+    display: flex;
+    gap: 12px;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .cal-day {
@@ -839,8 +851,16 @@ body {
     margin: 0 0 8px 4px;
 }
 
+.modal h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
 .modal input {
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     border: none;
     background: var(--input-bg);
     padding: 14px 18px;
@@ -916,7 +936,7 @@ body {
 }
 
 /* --- Responsive: Mobile --- */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     body {
         overflow: auto;
     }
