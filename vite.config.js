@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+    base: '/To-do-list-with-Pomodoro/',
     build: {
         sourcemap: false,
         minify: 'esbuild',
@@ -17,22 +18,22 @@ export default defineConfig({
                 background_color: '#F5F5F7',
                 display: 'standalone',
                 lang: 'ko',
-                start_url: '/',
+                start_url: '/To-do-list-with-Pomodoro/',
                 icons: [
                     {
-                        src: '/icons/icon-192.png',
+                        src: '/To-do-list-with-Pomodoro/icons/icon-192.png',
                         sizes: '192x192',
                         type: 'image/png',
                         purpose: 'any',
                     },
                     {
-                        src: '/icons/icon-512.png',
+                        src: '/To-do-list-with-Pomodoro/icons/icon-512.png',
                         sizes: '512x512',
                         type: 'image/png',
                         purpose: 'any',
                     },
                     {
-                        src: '/icons/icon-maskable.png',
+                        src: '/To-do-list-with-Pomodoro/icons/icon-maskable.png',
                         sizes: '512x512',
                         type: 'image/png',
                         purpose: 'maskable',
