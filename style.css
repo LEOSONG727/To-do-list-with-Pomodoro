@@ -80,10 +80,35 @@ body {
     overflow-y: auto;
 }
 
+/* Phase 2-3: sidebar header with settings button */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+}
+
 .sidebar h1 {
     font-size: 24px;
     font-weight: 700;
-    padding-left: 12px;
+    padding-left: 8px;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    transition: var(--transition);
+    line-height: 1;
+}
+
+.btn-icon:hover {
+    background: var(--input-bg);
+    color: var(--text-primary);
 }
 
 .sidebar-nav {
@@ -318,6 +343,38 @@ body {
 .cal-date {
     font-size: 20px;
     font-weight: 800;
+}
+
+/* --- Empty State (Phase 2-2) --- */
+.empty-state {
+    list-style: none;
+    padding: 60px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.empty-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+}
+
+.empty-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.empty-sub {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.empty-cta {
+    margin-top: 8px;
 }
 
 /* --- Task List --- */
@@ -885,6 +942,42 @@ body {
     background: rgba(255, 59, 48, 0.08);
 }
 
+/* --- Settings Modal (Phase 2-3) --- */
+.settings-modal {
+    max-width: 400px;
+}
+
+.settings-section {
+    margin-top: 8px;
+}
+
+.settings-section-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+.settings-duration-btns {
+    display: flex;
+    gap: 12px;
+}
+
+.settings-duration-btn {
+    flex: 1;
+    padding: 14px;
+    font-size: 16px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+}
+
+.settings-duration-btn.active {
+    background: var(--system-blue);
+    color: white;
+}
+
 /* --- Mobile Menu --- */
 .mobile-menu-btn {
     display: none;
@@ -1049,4 +1142,14 @@ body {
     #focus-task-title {
         font-size: 22px;
     }
+}
+
+/* --- Phase 2-6: prefers-reduced-motion --- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    .timer-bar, .progress-bar-fill { transition: none !important; }
 }

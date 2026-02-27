@@ -4,9 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus Do - 프리미엄 집중 투두</title>
+    <title>Focus Do - 집중 투두</title>
+
+    <!-- Phase 3: PWA meta tags -->
+    <meta name="description" content="뽀모도로 타이머와 함께하는 집중 투두 앱">
+    <meta name="theme-color" content="#0071E3">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Focus Do">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta property="og:title" content="Focus Do - 집중 투두">
+    <meta property="og:description" content="뽀모도로 타이머와 함께하는 집중 투두 앱">
+    <meta property="og:image" content="/icons/icon-512.png">
+    <meta property="og:type" content="website">
+
     <link rel="stylesheet" href="style.css">
-    <script defer src="main.js"></script>
+    <script type="module" src="main.js"></script>
 </head>
 
 <body>
@@ -18,8 +31,8 @@
         <div id="debug-log" style="margin-top:20px;font-family:monospace;font-size:12px;color:red;"></div>
     </div>
 
-    <!-- Feedback Toasts -->
-    <div id="toast-container"></div>
+    <!-- Phase 2-7: aria-live for screen reader toast announcements -->
+    <div id="toast-container" aria-live="polite" aria-atomic="false"></div>
 
     <div id="app">
         <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="메뉴 열기">&#9776;</button>
@@ -28,6 +41,8 @@
         <aside class="sidebar" role="complementary" aria-label="사이드바">
             <div class="sidebar-header">
                 <h1>Focus Do</h1>
+                <!-- Phase 2-3: settings button -->
+                <button id="settings-btn" class="btn-icon" aria-label="설정">⚙️</button>
             </div>
             <nav class="sidebar-nav" aria-label="필터 메뉴">
                 <button class="nav-item active" id="nav-all" aria-pressed="true">오늘의 계획</button>
@@ -175,6 +190,21 @@
                     <button id="modal-cancel" class="btn btn-secondary">취소</button>
                     <button id="modal-submit" class="btn btn-secondary">확인</button>
                     <button id="modal-submit-focus" class="btn btn-primary">확인 후 바로 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2-3: Settings overlay -->
+        <div id="settings-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="설정">
+            <div class="modal settings-modal">
+                <button id="close-settings" class="btn-close-overlay">&times;</button>
+                <h3>설정</h3>
+                <div class="settings-section">
+                    <p class="settings-section-label">뽀모도로 시간</p>
+                    <div class="settings-duration-btns">
+                        <button id="settings-25" class="btn settings-duration-btn active">25분</button>
+                        <button id="settings-50" class="btn settings-duration-btn">50분</button>
+                    </div>
                 </div>
             </div>
         </div>

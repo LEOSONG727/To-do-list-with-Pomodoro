@@ -5,6 +5,9 @@
 (function () {
     console.log('Focus Do v14.0 Booting...');
 
+    // Bug 2: prevent double-submit
+    let _submitting = false;
+
     const appState = {
         tasks: [],
         currentFilter: 'all',
@@ -22,10 +25,18 @@
             date: getFmtDate(new Date()),
             count: 0
         },
+        // Phase 2-3: user-configurable pomodoro duration
+        settings: {
+            pomodoroDuration: 25
+        },
         editingId: null
     };
 
-    const POMODORO_CYCLE = 1500;
+    // Phase 2-3: replaces the POMODORO_CYCLE constant
+    function getPomodoroSeconds() {
+        return (appState.settings.pomodoroDuration || 25) * 60;
+    }
+
     const TIMER_CIRCUMFERENCE = 289;
     const MIN_SESSION_SECONDS = 30;
 
@@ -63,13 +74,23 @@
 
     function el(id) { return document.getElementById(id); }
 
+    // Bug 1: save focusSnapshot so timer survives page refresh
     function save() {
         localStorage.setItem('focus_tasks_v14', JSON.stringify({
             tasks: appState.tasks,
-            sessionStats: appState.sessionStats
+            sessionStats: appState.sessionStats,
+            settings: appState.settings,
+            focusSnapshot: appState.focus.active ? {
+                taskId: appState.focus.taskId,
+                totalElapsed: appState.focus.totalElapsed,
+                cycleElapsed: appState.focus.cycleElapsed,
+                sessionTomatoes: appState.focus.sessionTomatoes,
+                pausedAt: Date.now()
+            } : null
         }));
     }
 
+    // Bug 1: restore focusSnapshot from storage
     function load() {
         const raw = localStorage.getItem('focus_tasks_v14');
         if (raw) {
@@ -77,6 +98,18 @@
                 const data = JSON.parse(raw);
                 appState.tasks = Array.isArray(data.tasks) ? data.tasks : [];
                 appState.sessionStats = data.sessionStats || { date: getFmtDate(new Date()), count: 0 };
+                appState.settings = data.settings || { pomodoroDuration: 25 };
+
+                // Restore paused focus session after refresh
+                if (data.focusSnapshot) {
+                    const snap = data.focusSnapshot;
+                    appState.focus.taskId = snap.taskId;
+                    appState.focus.totalElapsed = snap.totalElapsed;
+                    appState.focus.cycleElapsed = snap.cycleElapsed;
+                    appState.focus.sessionTomatoes = snap.sessionTomatoes;
+                    appState.focus.active = true;
+                    appState.focus.paused = true;
+                }
 
                 const today = getFmtDate(new Date());
                 if (appState.sessionStats.date !== today) {
@@ -87,10 +120,12 @@
                 console.warn('데이터 로드 실패, 초기화합니다:', e.message);
                 appState.tasks = [];
                 appState.sessionStats = { date: getFmtDate(new Date()), count: 0 };
+                appState.settings = { pomodoroDuration: 25 };
             }
         } else {
             appState.tasks = [];
             appState.sessionStats = { date: getFmtDate(new Date()), count: 0 };
+            appState.settings = { pomodoroDuration: 25 };
         }
     }
 
@@ -129,6 +164,7 @@
         }
     }
 
+    // Phase 2-2: improved empty state with onboarding CTA
     function renderTasks() {
         const list = el('task-list');
         const dateDisp = el('current-date-display');
@@ -142,7 +178,27 @@
         const filtered = appState.currentFilter === 'completed' ? daily.filter(t => t.completed) : daily;
 
         if (filtered.length === 0) {
-            list.innerHTML = `<li style="padding:40px; text-align:center; opacity:0.4;">할 일이 아직 없습니다. 📝</li>`;
+            const emptyState = document.createElement('li');
+            emptyState.className = 'empty-state';
+
+            if (appState.tasks.length === 0) {
+                // First-time visitor: show CTA
+                emptyState.innerHTML = `
+                    <div class="empty-icon">📝</div>
+                    <p class="empty-title">첫 번째 할 일을 추가해보세요</p>
+                    <p class="empty-sub">작업을 추가하고 뽀모도로 타이머로 집중해봐요!</p>
+                    <button class="btn btn-primary empty-cta">새 작업 추가하기</button>
+                `;
+                emptyState.querySelector('.empty-cta').onclick = () => openModal();
+            } else {
+                // Returning visitor: completed or no tasks for this date
+                emptyState.innerHTML = `
+                    <div class="empty-icon">✅</div>
+                    <p class="empty-title">오늘은 모두 완료했어요!</p>
+                    <p class="empty-sub">수고하셨습니다. 내일도 화이팅!</p>
+                `;
+            }
+            list.appendChild(emptyState);
             return;
         }
 
@@ -175,7 +231,15 @@
 
             li.appendChild(checkbox);
             li.appendChild(content);
-            li.onclick = () => openModal(t.id);
+
+            // Phase 2-8: close mobile sidebar before opening modal
+            li.onclick = () => {
+                const sidebar = document.querySelector('.sidebar');
+                const backdrop = el('sidebar-backdrop');
+                if (sidebar) sidebar.classList.remove('open');
+                if (backdrop) backdrop.classList.remove('visible');
+                openModal(t.id);
+            };
             li.onkeydown = (e) => { if (e.key === 'Enter') openModal(t.id); };
             list.appendChild(li);
         });
@@ -227,13 +291,10 @@
         if (progressBg) progressBg.setAttribute('aria-valuenow', String(p));
     }
 
+    // Phase 4: simplified showToast — container is now static in HTML
     function showToast(msg, icon = "🎉") {
-        let container = el('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            document.body.appendChild(container);
-        }
+        const container = el('toast-container');
+        if (!container) return;
         const toast = document.createElement('div');
         toast.className = 'toast';
         const iconSpan = document.createElement('span');
@@ -276,6 +337,39 @@
         });
     }
 
+    // Phase 2-3: sync settings UI button active state
+    function updateSettingsUI() {
+        const dur = appState.settings.pomodoroDuration || 25;
+        const btn25 = el('settings-25');
+        const btn50 = el('settings-50');
+        if (btn25) btn25.classList.toggle('active', dur === 25);
+        if (btn50) btn50.classList.toggle('active', dur === 50);
+    }
+
+    // Shared interval starter — used by startFocus and maybeResumeFocus
+    function _startFocusInterval(task) {
+        if (appState.focus.interval) clearInterval(appState.focus.interval);
+        appState.focus.interval = setInterval(() => {
+            if (appState.focus.paused) return;
+
+            appState.focus.totalElapsed++;
+            appState.focus.cycleElapsed++;
+
+            // Bug 1: auto-save every 10 seconds to preserve progress
+            if (appState.focus.totalElapsed % 10 === 0) save();
+
+            // Phase 2-3: use dynamic pomodoro duration
+            if (appState.focus.cycleElapsed >= getPomodoroSeconds()) {
+                appState.focus.cycleElapsed = 0;
+                appState.focus.sessionTomatoes++;
+                task.tomatoes = (task.tomatoes || 0) + 1;
+                save();
+                showToast(`벌써 1뽀모 완료! "${task.title}" 작업에 기록했어요 ✨`, "🍅");
+            }
+            updateFocusUI();
+        }, 1000);
+    }
+
     function startFocus(id) {
         const task = appState.tasks.find(t => t.id === id);
         if (!task) return;
@@ -302,22 +396,30 @@
         el('focus-overlay').classList.remove('is-paused');
 
         updateFocusUI();
+        _startFocusInterval(task);
+    }
 
-        if (appState.focus.interval) clearInterval(appState.focus.interval);
-        appState.focus.interval = setInterval(() => {
-            if (appState.focus.paused) return;
+    // Bug 1: restore paused focus session after page reload
+    function maybeResumeFocus() {
+        if (!appState.focus.active || !appState.focus.paused) return;
+        const task = appState.tasks.find(t => t.id === appState.focus.taskId);
+        if (!task) {
+            appState.focus.active = false;
+            appState.focus.paused = false;
+            return;
+        }
 
-            appState.focus.totalElapsed++;
-            appState.focus.cycleElapsed++;
-            if (appState.focus.cycleElapsed >= POMODORO_CYCLE) {
-                appState.focus.cycleElapsed = 0;
-                appState.focus.sessionTomatoes++;
-                task.tomatoes = (task.tomatoes || 0) + 1;
-                save();
-                showToast(`벌써 1뽀모 완료! "${task.title}" 작업에 기록했어요 ✨`, "🍅");
-            }
-            updateFocusUI();
-        }, 1000);
+        const sessionCountEl = el('focus-session-count');
+        const taskTitleEl = el('focus-task-title');
+        if (sessionCountEl) sessionCountEl.textContent = `오늘 ${appState.sessionStats.count + 1}번째 집중`;
+        if (taskTitleEl) taskTitleEl.textContent = task.title;
+        el('pause-focus-btn').textContent = '다시 시작';
+        el('focus-overlay').classList.remove('hidden');
+        el('focus-overlay').classList.add('is-paused');
+
+        updateFocusUI();
+        _startFocusInterval(task); // interval skips while paused = true
+        showToast('이전 집중 세션을 복원했습니다.', '⏸️');
     }
 
     function togglePause() {
@@ -327,6 +429,7 @@
         else el('focus-overlay').classList.remove('is-paused');
     }
 
+    // Phase 2-5: fix tomato emoji overflow
     function updateFocusUI() {
         const task = appState.tasks.find(t => t.id === appState.focus.taskId);
         if (!task) return;
@@ -335,11 +438,15 @@
         const tomatoesEl = el('session-tomatoes');
         if (!timerEl || !progressEl || !tomatoesEl) return;
 
-        const left = POMODORO_CYCLE - appState.focus.cycleElapsed;
-        const progress = appState.focus.cycleElapsed / POMODORO_CYCLE;
+        const pomodoroSec = getPomodoroSeconds();
+        const left = pomodoroSec - appState.focus.cycleElapsed;
+        const progress = appState.focus.cycleElapsed / pomodoroSec;
         timerEl.textContent = formatTime(left);
         progressEl.style.strokeDashoffset = TIMER_CIRCUMFERENCE * (1 - progress);
-        tomatoesEl.textContent = '🍅'.repeat(task.tomatoes || 0);
+
+        // Phase 2-5: prevent emoji overflow beyond 8 tomatoes
+        const count = task.tomatoes || 0;
+        tomatoesEl.textContent = count > 8 ? `🍅 x ${count}` : '🍅'.repeat(count);
     }
 
     function stopFocus() {
@@ -370,6 +477,7 @@
 
         appState.focus.active = false;
         appState.focus.paused = false;
+        appState.focus.interval = null;
         const focusOverlay = el('focus-overlay');
         if (focusOverlay) focusOverlay.classList.add('hidden');
         save(); render();
@@ -391,17 +499,34 @@
 
             el('add-task-btn').onclick = () => openModal();
             el('modal-cancel').onclick = closeModals;
+
+            // Phase 2-1: delete confirmation dialog
             el('modal-delete').onclick = () => {
                 if (appState.editingId) {
+                    if (!window.confirm('정말로 이 작업을 삭제하시겠습니까?')) return;
                     appState.tasks = appState.tasks.filter(t => t.id !== appState.editingId);
                     save(); render(); closeModals();
                 }
             };
 
+            // Bug 2: guard against double-click duplicate task creation
             const submitTask = (autoStart = false) => {
+                if (_submitting) return;
+                _submitting = true;
+                const submitBtn = el('modal-submit');
+                const submitFocusBtn = el('modal-submit-focus');
+                if (submitBtn) submitBtn.disabled = true;
+                if (submitFocusBtn) submitFocusBtn.disabled = true;
+
                 const val = el('new-task-input').value.trim();
                 const d = el('task-date-input').value;
-                if (!val || !d) return;
+                if (!val || !d) {
+                    _submitting = false;
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (submitFocusBtn) submitFocusBtn.disabled = false;
+                    return;
+                }
+
                 let taskId = appState.editingId;
                 if (taskId) {
                     const t = appState.tasks.find(x => x.id === taskId);
@@ -412,6 +537,10 @@
                 }
                 save(); render(); closeModals();
                 if (autoStart) startFocus(taskId);
+
+                _submitting = false;
+                if (submitBtn) submitBtn.disabled = false;
+                if (submitFocusBtn) submitFocusBtn.disabled = false;
             };
 
             el('modal-submit').onclick = () => submitTask(false);
@@ -478,6 +607,30 @@
                 if (sidebarBackdrop) sidebarBackdrop.onclick = toggleSidebar;
             }
 
+            // Phase 2-3: settings panel handlers
+            const settingsBtn = el('settings-btn');
+            if (settingsBtn) {
+                settingsBtn.onclick = () => {
+                    el('settings-overlay').classList.remove('hidden');
+                    updateSettingsUI();
+                };
+            }
+            const closeSettings = el('close-settings');
+            if (closeSettings) closeSettings.onclick = () => el('settings-overlay').classList.add('hidden');
+
+            const settings25 = el('settings-25');
+            if (settings25) settings25.onclick = () => {
+                appState.settings.pomodoroDuration = 25;
+                save(); updateSettingsUI();
+                showToast('뽀모도로 시간이 25분으로 설정되었습니다.', '⏱️');
+            };
+            const settings50 = el('settings-50');
+            if (settings50) settings50.onclick = () => {
+                appState.settings.pomodoroDuration = 50;
+                save(); updateSettingsUI();
+                showToast('뽀모도로 시간이 50분으로 설정되었습니다.', '⏱️');
+            };
+
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     if (appState.focus.active) {
@@ -492,6 +645,22 @@
                         submitTask(false);
                     }
                 }
+                // Phase 2-4: Ctrl+N / Cmd+N opens new task modal
+                if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                    e.preventDefault();
+                    if (el('modal-overlay').classList.contains('hidden')) openModal();
+                }
+            });
+
+            // Bug 1: restore paused focus session after refresh
+            maybeResumeFocus();
+
+            // Bug 3: multi-tab localStorage sync
+            window.addEventListener('storage', (e) => {
+                if (e.key !== 'focus_tasks_v14' || !e.newValue) return;
+                if (appState.focus.active) return; // don't interrupt active timer
+                load(); render();
+                showToast('다른 탭에서 변경 사항을 반영했습니다.', '🔄');
             });
 
             render();
