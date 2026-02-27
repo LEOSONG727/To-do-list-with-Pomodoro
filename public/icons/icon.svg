@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#0071E3"/>
+  <!-- Tomato body -->
+  <circle cx="256" cy="290" r="140" fill="#FF3B30"/>
+  <!-- Tomato highlight -->
+  <circle cx="210" cy="240" r="30" fill="rgba(255,255,255,0.25)"/>
+  <!-- Stem -->
+  <rect x="246" y="120" width="20" height="60" rx="10" fill="#34C759"/>
+  <!-- Leaf left -->
+  <ellipse cx="220" cy="145" rx="30" ry="14" fill="#34C759" transform="rotate(-30 220 145)"/>
+  <!-- Leaf right -->
+  <ellipse cx="292" cy="145" rx="30" ry="14" fill="#34C759" transform="rotate(30 292 145)"/>
+  <!-- Clock face -->
+  <circle cx="256" cy="300" r="80" fill="white" opacity="0.95"/>
+  <!-- Clock hands -->
+  <line x1="256" y1="300" x2="256" y2="240" stroke="#0071E3" stroke-width="8" stroke-linecap="round"/>
+  <line x1="256" y1="300" x2="296" y2="320" stroke="#0071E3" stroke-width="6" stroke-linecap="round"/>
+  <!-- Clock center dot -->
+  <circle cx="256" cy="300" r="8" fill="#0071E3"/>
+</svg>
